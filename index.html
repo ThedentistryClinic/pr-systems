@@ -7,13 +7,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--pri:#1d4ed8;--bg:#f3f5f9;--bd:#d9dee8;--tx:#1f2937;--mut:#6b7280}
+:root{--pri:#c8102e;--bg:#f3f5f9;--bd:#d9dee8;--tx:#1f2937;--mut:#6b7280}
 *{box-sizing:border-box}
 body{margin:0;font-family:'Sarabun','Tahoma',sans-serif;background:var(--bg);color:var(--tx);font-size:15px}
 header{background:#fff;border-bottom:1px solid var(--bd);padding:10px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
 header b{font-size:18px;color:var(--pri)} nav{display:flex;gap:6px;flex:1;flex-wrap:wrap}
 nav button{background:none;border:0;padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit;color:var(--mut)}
-nav button.on{background:#e8eefc;color:var(--pri);font-weight:600}
+nav button.on{background:#fde8ec;color:var(--pri);font-weight:600}
 main{max-width:1100px;margin:20px auto;padding:0 16px}
 .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:16px}
 h2{margin:0 0 14px;font-size:20px} h3{margin:16px 0 8px;font-size:16px}
@@ -41,7 +41,16 @@ th{font-size:13px;color:var(--mut)} .tw{overflow-x:auto} tr.clk{cursor:pointer} 
 .modal{position:fixed;inset:0;background:#0007;display:none;overflow:auto;padding:20px;z-index:10}.modal.on{display:block}
 .modal .box{background:#fff;max-width:820px;margin:0 auto;border-radius:12px;padding:20px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 18px;border-radius:8px;display:none;z-index:99}
-.login{max-width:360px;margin:12vh auto}.mut{color:var(--mut)} .r{text-align:right}
+.login{max-width:440px;margin:6vh auto;padding:0 16px}
+.lcard{background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 8px 30px #0001}
+.brand{font-family:'Times New Roman',Georgia,serif;font-weight:700;font-size:34px;letter-spacing:1px;color:#c8102e;text-align:center}
+.sub{text-align:center;color:var(--mut);font-size:13px;margin-bottom:20px}
+.tabs{display:flex;background:#f1f2f4;border-radius:12px;padding:4px;margin-bottom:18px}
+.tabs button{flex:1;border:0;background:none;padding:10px;border-radius:9px;font:inherit;font-weight:600;cursor:pointer;color:#111}
+.tabs button.on{background:#fff;box-shadow:0 1px 4px #0002}
+.lcard label{font-size:14px;color:#111;margin:12px 0 5px}.lcard input{background:#e8eefc;border-color:#cdd6ea;padding:11px 12px}
+.rq{color:#c8102e;font-style:normal}.btn.red2{width:100%;margin-top:18px;background:#c8102e;padding:12px;font-size:16px;border-radius:10px}
+.mut{color:var(--mut)} .r{text-align:right}
 /* ----- print ----- */
 #printArea{display:none}
 .pf{font-size:13px;color:#000;page-break-after:always} .pf:last-child{page-break-after:auto}
@@ -62,7 +71,15 @@ const SUPABASE_URL = 'https://ihnuzcaupbzqfourfufd.supabase.co/rest/v1/';
 const SUPABASE_KEY = 'sb_publishable_mv8pzoIDbjZmLqebo4jBnA_J5HAqHAH';
 const EMAIL_DOMAIN = 'yourcompany.com';   // ใช้ต่อท้าย username อัตโนมัติ (กรณีไม่พิมพ์ @)
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+function fatal(m){document.getElementById('root').innerHTML='<div class="card login"><h2>⚠️ เกิดข้อผิดพลาด</h2><div class="alert">'+String(m).replace(/</g,'&lt;')+'</div></div>'}
+window.addEventListener('error',e=>fatal(e.message));
+window.addEventListener('unhandledrejection',e=>fatal(e.reason?.message||e.reason));
+let sb;
+try{
+  if(!window.supabase) throw new Error('โหลดไลบรารี Supabase ไม่ได้ (ตรวจสอบอินเทอร์เน็ต หรือไฟร์วอลล์ที่บล็อก cdn.jsdelivr.net)');
+  if(SUPABASE_URL.includes('YOUR-PROJECT')||SUPABASE_KEY.includes('YOUR-ANON')) throw new Error('ยังไม่ได้ใส่ SUPABASE_URL และ SUPABASE_KEY ที่ต้นสคริปต์ใน index.html');
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}catch(e){ fatal(e.message) }
 const STATUS = ['รอตรวจสอบ','ส่งกลับแก้ไข','รออนุมัติ','อนุมัติแล้ว','สั่งซื้อแล้ว','เสร็จสิ้น','ยกเลิก'];
 const FLOW = ['รอตรวจสอบ','รออนุมัติ','อนุมัติแล้ว','สั่งซื้อแล้ว','เสร็จสิ้น'];
 const URG = ['ปกติ','เร่งด่วน','ด่วนมาก'];
@@ -84,21 +101,32 @@ const isAdmin = () => me?.role === 'admin';
 
 /* ===== Auth ===== */
 async function boot(){
+  if(!sb) return;
   const {data:{session}} = await sb.auth.getSession();
   session ? enter(session.user) : loginView();
 }
-function loginView(){
-  $('#root').innerHTML = `<div class="card login"><h2>🧾 PR System</h2>
-  <form id="lf"><label>Username / Email</label><input name="u" required autofocus>
-  <label style="margin-top:10px">รหัสผ่าน</label><input name="p" type="password" required>
-  <button class="btn" style="width:100%;margin-top:16px">เข้าสู่ระบบ</button></form>
-  <p class="mut" style="font-size:12px">ติดต่อ IT เพื่อขอบัญชีผู้ใช้</p></div>`;
+function loginView(tab='in'){
+  const reg = tab==='up';
+  const fld = (l,n,t='text',x='') => `<label>${l} <i class="rq">*</i></label><input name="${n}" type="${t}" required ${x}>`;
+  $('#root').innerHTML = `<div class="login"><div class="lcard"><div class="brand">TANTATAT</div><div class="sub">ระบบใบขอซื้อ (PR)</div>
+  <div class="tabs"><button type="button" class="${reg?'':'on'}" onclick="loginView('in')">เข้าสู่ระบบ</button><button type="button" class="${reg?'on':''}" onclick="loginView('up')">สมัครใช้งาน</button></div>
+  <form id="lf">${reg
+    ? fld('ชื่อ-นามสกุล','n')+fld('แผนก/สาขา','d')+`<label>ตำแหน่ง</label><input name="pos"><label>โทรศัพท์</label><input name="ph">`+fld('อีเมล','u','email')+fld('รหัสผ่าน (อย่างน้อย 6 ตัว)','p','password','minlength="6"')+fld('ยืนยันรหัสผ่าน','p2','password')
+    : fld('อีเมล','u','text','autofocus')+fld('รหัสผ่าน','p','password')}
+  <button class="btn red2">${reg?'สมัครใช้งาน':'เข้าสู่ระบบ'}</button></form></div></div>`;
   $('#lf').onsubmit = async e => {
-    e.preventDefault();
-    const f = e.target;
-    const {data,error} = await sb.auth.signInWithPassword({email:toEmail(f.u.value.trim()),password:f.p.value});
-    if(error) return toast('เข้าสู่ระบบไม่สำเร็จ: ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-    enter(data.user);
+    e.preventDefault(); const f = e.target;
+    if(!reg){
+      const {data,error} = await sb.auth.signInWithPassword({email:toEmail(f.u.value.trim()),password:f.p.value});
+      if(error) return toast('เข้าสู่ระบบไม่สำเร็จ: อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      return enter(data.user);
+    }
+    if(f.p.value!==f.p2.value) return toast('รหัสผ่านไม่ตรงกัน');
+    const {data,error} = await sb.auth.signUp({email:toEmail(f.u.value.trim()),password:f.p.value,
+      options:{data:{full_name:f.n.value.trim(),position:f.pos.value.trim(),phone:f.ph.value.trim(),dept:f.d.value.trim(),req_type:'general'}}});
+    if(error) return toast('สมัครไม่สำเร็จ: '+error.message);
+    if(data.session) return enter(data.user);
+    toast('สมัครสำเร็จ กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ'); loginView('in');
   };
 }
 async function enter(u){
@@ -114,7 +142,7 @@ async function go(v, arg){
   const nav = isAdmin()
     ? [['dash','📊 Dashboard'],['list','รายการ PR ทั้งหมด'],['form','＋ สร้าง PR'],['users','👥 ผู้ใช้งาน']]
     : [['list','PR ของฉัน'],['form','＋ สร้าง PR']];
-  $('#root').innerHTML = `<header><b>🧾 PR System</b><nav>${nav.map(n=>`<button class="${n[0]===v?'on':''}" onclick="go('${n[0]}')">${n[1]}</button>`).join('')}</nav>
+  $('#root').innerHTML = `<header><b style="font-family:Times New Roman,serif;letter-spacing:1px">TANTATAT PR</b><nav>${nav.map(n=>`<button class="${n[0]===v?'on':''}" onclick="go('${n[0]}')">${n[1]}</button>`).join('')}</nav>
     <span class="mut">${esc(me.full_name||me.username)} · ${isAdmin()?'IT/Admin':TYPE_TH[me.req_type]}</span>
     <button class="btn sec" onclick="logout()">ออกจากระบบ</button></header><main id="main">กำลังโหลด...</main>`;
   if(v==='form') return formView(arg);
